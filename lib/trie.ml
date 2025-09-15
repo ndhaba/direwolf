@@ -1,4 +1,4 @@
-type 'v trie = Node of 'v option * (char * 'v trie) list
+type 'v t = Node of 'v option * (char * 'v t) list
 
 let empty = Node (None, [])
 let ( >> ) f g x = g (f x)

@@ -1,17 +1,17 @@
-type 'a trie
+type 'a t
 
-val empty: 'a trie
+val empty: 'a t
 
-val mem: 'a trie -> string -> bool
+val mem: 'a t -> string -> bool
 
-val get: 'a trie -> string -> 'a option
+val get: 'a t -> string -> 'a option
 
-val largest_prefix: 'a trie -> string -> string option
+val largest_prefix: 'a t -> string -> string option
 
-val insert_or_replace: 'a trie -> string -> 'a -> 'a option * 'a trie
+val insert_or_replace: 'a t -> string -> 'a -> 'a option * 'a t
 
-val remove: 'a trie -> string -> 'a option * 'a trie
+val remove: 'a t -> string -> 'a option * 'a t
 
-val size: 'a trie -> int
+val size: 'a t -> int
 
-val nonredundancy_invar: 'a trie -> bool
+val nonredundancy_invar: 'a t -> bool
