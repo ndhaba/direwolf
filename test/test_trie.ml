@@ -11,12 +11,12 @@ let size_empty_test =
   assert_equal 0 (Trie.size Trie.empty) ~printer:string_of_int
 
 let size_one_test =
+  let fn k =
+    let _, trie = Trie.insert_or_replace Trie.empty k () in
+    1 = Trie.size trie
+  in
   QCheck_ounit.to_ounit2_test
-    (let fn k =
-       let _, trie = Trie.insert_or_replace Trie.empty k () in
-       1 = Trie.size trie
-     in
-     QCheck.Test.make ~count:100
+    (QCheck.Test.make ~count:100
        ~name:"size(insert_or_replace(empty, k, v)) = 1"
        (QCheck.string_of_size (QCheck.Gen.int_range 8 10))
        fn)
@@ -24,7 +24,7 @@ let size_one_test =
 let size_arbitrary_inserts =
   let rec insert_all tree = function
     | [] -> tree
-    | h :: t -> insert_all (snd (Trie.insert_or_replace tree h ())) t
+    | h :: t -> insert_all (Trie.insert tree h ()) t
   in
   let fn keys =
     let trie = insert_all Trie.empty keys in
@@ -61,21 +61,20 @@ let mem_insert_different =
        (QCheck.string_of_size (QCheck.Gen.int_range 8 10))
        fn)
 
-let get_empty_tree =
-  let fn k = None = Trie.get Trie.empty k in
+let get_opt_empty_tree =
+  let fn k = None = Trie.get_opt Trie.empty k in
   QCheck_ounit.to_ounit2_test
-    (QCheck.Test.make ~count:100 ~name:"get(empty, k) = None"
+    (QCheck.Test.make ~count:100 ~name:"get_opt(empty, k) = None"
        (QCheck.string_of_size (QCheck.Gen.int_range 8 10))
        fn)
 
-let get_insert_once =
+let get_opt_insert_once =
   let fn (k, v) =
-    let tree = Trie.insert_or_replace Trie.empty k v |> snd in
-    Some v = Trie.get tree k
+    let tree = Trie.insert Trie.empty k v in
+    Some v = Trie.get_opt tree k
   in
   QCheck_ounit.to_ounit2_test
-    (QCheck.Test.make ~count:100
-       ~name:"get(insert_or_replace(empty, k, v), k) = v"
+    (QCheck.Test.make ~count:100 ~name:"get_opt(set(empty, k, v), k) = Some v"
        (QCheck.tup2
           (QCheck.string_of_size (QCheck.Gen.int_range 8 10))
           QCheck.int)
@@ -83,15 +82,13 @@ let get_insert_once =
 
 let get_insert_twice =
   let fn (k, v1, v2) =
-    let tree = Trie.insert_or_replace Trie.empty k v1 |> snd in
-    let tree = Trie.insert_or_replace tree k v2 |> snd in
-    Some v2 = Trie.get tree k
+    let tree = Trie.set Trie.empty k v1 in
+    let tree = Trie.set tree k v2 in
+    v2 = Trie.get tree k
   in
   QCheck_ounit.to_ounit2_test
     (QCheck.Test.make ~count:100
-       ~name:
-         "get(insert_or_replace(insert_or_replace(empty, k, v1), k, v2), k) = \
-          v2"
+       ~name:"get(set(set(empty, k, v1), k, v2), k) = v2"
        (QCheck.tup3
           (QCheck.string_of_size (QCheck.Gen.int_range 8 10))
           QCheck.int QCheck.int)
@@ -106,7 +103,7 @@ let tests =
          mem_empty;
          mem_insert_same;
          mem_insert_different;
-         get_empty_tree;
-         get_insert_once;
+         get_opt_empty_tree;
+         get_opt_insert_once;
          get_insert_twice;
        ]
