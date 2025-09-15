@@ -1,0 +1,4 @@
+(library
+ (name direwolf)
+ (instrumentation
+  (backend bisect_ppx)))

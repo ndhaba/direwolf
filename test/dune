@@ -1,0 +1,3 @@
+(test
+ (name main)
+ (libraries direwolf ounit2 qcheck))
