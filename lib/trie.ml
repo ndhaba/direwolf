@@ -6,7 +6,7 @@ exception Key_not_found
 let empty = Node (None, [])
 let ( >> ) f g x = g (f x)
 
-let get_opt tree str =
+let get_opt str tree =
   let slen = String.length str in
   let rec get_inner tree i =
     if i > slen then None
@@ -23,14 +23,14 @@ let get_opt tree str =
   in
   get_inner tree 0
 
-let get tree str =
-  match get_opt tree str with
+let get str tree =
+  match get_opt str tree with
   | None -> raise Key_not_found
   | Some v -> v
 
-let mem tree str = Option.is_some (get_opt tree str)
+let mem str tree = Option.is_some (get_opt str tree)
 
-let largest_prefix tree str =
+let largest_prefix str tree =
   let slen = String.length str in
   let rec largest_prefix_inner tree i =
     if i > slen then None
@@ -55,7 +55,7 @@ let largest_prefix tree str =
   in
   largest_prefix_inner tree 0
 
-let insert_or_replace tree str value =
+let insert_or_replace str value tree =
   let slen = String.length str in
   let rec insert_or_replace_inner tree i =
     match tree with
@@ -88,17 +88,17 @@ let insert_or_replace tree str value =
   in
   insert_or_replace_inner (Some tree) 0
 
-let insert tree str value =
-  match insert_or_replace tree str value with
+let insert str value tree =
+  match insert_or_replace str value tree with
   | None, tree -> tree
   | Some _, _ -> raise Already_exists
 
-let replace tree str value =
-  match insert_or_replace tree str value with
+let replace str value tree =
+  match insert_or_replace str value tree with
   | Some v, tree -> (v, tree)
   | None, _ -> raise Key_not_found
 
-let remove tree str =
+let remove str tree =
   let slen = String.length str in
   let rec remove_inner tree i =
     if i = slen then
@@ -119,7 +119,7 @@ let remove tree str =
   in
   remove_inner tree 0
 
-let set tree str value = snd (insert_or_replace tree str value)
+let set str value tree = snd (insert_or_replace str value tree)
 
 let rec size = function
   | Node (Some _, []) -> 1
