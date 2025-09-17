@@ -31,8 +31,13 @@ let get tree str =
 let mem tree str = Option.is_some (get_opt tree str)
 
 let largest_prefix tree str =
+  let slen = String.length str in
   let rec largest_prefix_inner tree i =
-    if i >= String.length str then None
+    if i > slen then None
+    else if i = slen then
+      match tree with
+      | Node (Some _, _) -> Some str
+      | Node (None, _) -> None
     else
       let c = String.get str i in
       match tree with
@@ -42,10 +47,10 @@ let largest_prefix tree str =
           | None -> None)
       | Node (Some _, subtrees) -> (
           match List.assoc_opt c subtrees with
-          | None -> Some (String.sub str 0 (i + 1))
+          | None -> Some (String.sub str 0 i)
           | Some subtree -> (
               match largest_prefix_inner subtree (i + 1) with
-              | None -> Some (String.sub str 0 (i + 1))
+              | None -> Some (String.sub str 0 i)
               | v -> v))
   in
   largest_prefix_inner tree 0
