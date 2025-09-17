@@ -112,10 +112,11 @@ let remove str tree =
           | None -> (None, tree)
           | Some subtree -> (
               let value, subtree = remove_inner subtree (i + 1) in
+              let subtrees = List.remove_assoc c subtrees in
               match subtree with
-              | Node (None, []) ->
-                  (value, Node (root_value, List.remove_assoc c subtrees))
-              | _ -> (value, tree)))
+              | Node (None, []) -> (value, Node (root_value, subtrees))
+              | subtree -> (value, Node (root_value, (c, subtree) :: subtrees)))
+          )
   in
   remove_inner tree 0
 
