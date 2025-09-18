@@ -24,5 +24,3 @@ val replace: string -> 'a -> 'a t -> 'a * 'a t
 val set: string -> 'a -> 'a t -> 'a t
 
 val size: 'a t -> int
-
-val nonredundancy_invar: 'a t -> bool

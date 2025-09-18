@@ -69,6 +69,22 @@ let get_insert_twice =
     QCheck.(tup3 string_printable int int)
     fn "get(set(set(empty, k, v1), k, v2), k) = v2"
 
+let insert_twice =
+  test_key_fail
+    Trie.(fun k -> insert k () (insert k () empty))
+    "insert(k, v2, insert(k, v1, empty)) = !"
+
+let replace_empty =
+  test_key_fail Trie.(fun k -> replace k () empty) "replace(k, v, empty) = !"
+
+let replace_matches_insert =
+  make_test
+    QCheck.(tup3 string_printable int int)
+    Trie.(
+      fun (k, v1, v2) ->
+        (v1, insert k v2 empty) = replace k v2 (insert k v1 empty))
+    "replace(k, v2, insert(k, v1, empty)) = v1, insert(k, v2, empty)"
+
 let largest_prefix_empty =
   test_key
     (fun k -> None = Trie.largest_prefix k Trie.empty)
@@ -78,8 +94,8 @@ let largest_prefix_one =
   make_test
     QCheck.(tup2 string_printable string_printable)
     (fun (s1, s2) ->
-      Some s1 = Trie.largest_prefix (s1 ^ s2) (Trie.set s1 () Trie.empty))
-    "largest_prefix(set(empty, s1), s1 ^ s2) = Some s1"
+      Some s1 = Trie.largest_prefix (s1 ^ s2) (Trie.insert s1 () Trie.empty))
+    "largest_prefix(insert(empty, s1), s1 ^ s2) = Some s1"
 
 let largest_prefix_two =
   make_test
@@ -88,9 +104,9 @@ let largest_prefix_two =
       Some (s1 ^ s2)
       = Trie.largest_prefix
           (s1 ^ s2 ^ s3)
-          (Trie.set (s1 ^ s2) () (Trie.set s1 () Trie.empty)))
-    "largest_prefix(set(set(empty, s1), s1 ^ s2), s1 ^ s2 ^ s3) = Some (s1 ^ \
-     s2)"
+          (Trie.set (s1 ^ s2) () (Trie.insert s1 () Trie.empty)))
+    "largest_prefix(insert(insert(empty, s1), s1 ^ s2), s1 ^ s2 ^ s3) = Some \
+     (s1 ^ s2)"
 
 let remove_empty =
   test_key
@@ -130,6 +146,9 @@ let tests = "Trie" >::: [
   get_empty;
   get_insert_once;
   get_insert_twice;
+  insert_twice;
+  replace_empty;
+  replace_matches_insert;
   largest_prefix_empty;
   largest_prefix_one;
   largest_prefix_two;

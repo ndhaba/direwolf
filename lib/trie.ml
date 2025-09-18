@@ -4,13 +4,11 @@ exception Already_exists
 exception Key_not_found
 
 let empty = Node (None, [])
-let ( >> ) f g x = g (f x)
 
 let get_opt str tree =
   let slen = String.length str in
   let rec get_inner tree i =
-    if i > slen then None
-    else if i = slen then
+    if i = slen then
       match tree with
       | Node (v, _) -> v
     else
@@ -33,8 +31,7 @@ let mem str tree = Option.is_some (get_opt str tree)
 let largest_prefix str tree =
   let slen = String.length str in
   let rec largest_prefix_inner tree i =
-    if i > slen then None
-    else if i = slen then
+    if i = slen then
       match tree with
       | Node (Some _, _) -> Some str
       | Node (None, _) -> None
@@ -57,36 +54,26 @@ let largest_prefix str tree =
 
 let insert_or_replace str value tree =
   let slen = String.length str in
-  let rec insert_or_replace_inner tree i =
-    match tree with
-    | None ->
-        if i = slen then (None, Node (Some value, []))
-        else
-          let c = String.get str i in
-          let v, t = insert_or_replace_inner None (i + 1) in
-          (v, Node (None, [ (c, t) ]))
-    | Some (Node (v, subtrees)) ->
-        if i = slen then (v, Node (Some value, subtrees))
-        else
-          let c = String.get str i in
-          let rec replace_or_append = function
-            | [] ->
-                let fv, ftree =
-                  insert_or_replace_inner (Some (Node (None, []))) (i + 1)
-                in
-                (fv, [ (c, ftree) ])
-            | (k, v) :: t when k = c ->
-                let fv, ftree = insert_or_replace_inner (Some v) (i + 1) in
-                (fv, (k, ftree) :: t)
-            | (k, v) :: t when k <> c ->
-                let fv, ftrees = replace_or_append t in
-                (fv, (k, v) :: ftrees)
-            | _ -> assert false
-          in
-          let fv, subtrees = replace_or_append subtrees in
-          (fv, Node (v, subtrees))
+  let rec insert_or_replace_inner (Node (v, subtrees)) i =
+    if i = slen then (v, Node (Some value, subtrees))
+    else
+      let c = String.get str i in
+      let rec replace_or_append = function
+        | [] ->
+            let fv, ftree = insert_or_replace_inner (Node (None, [])) (i + 1) in
+            (fv, [ (c, ftree) ])
+        | (k, v) :: t when k = c ->
+            let fv, ftree = insert_or_replace_inner v (i + 1) in
+            (fv, (k, ftree) :: t)
+        | (k, v) :: t when k <> c ->
+            let fv, ftrees = replace_or_append t in
+            (fv, (k, v) :: ftrees)
+        | _ -> assert false
+      in
+      let fv, subtrees = replace_or_append subtrees in
+      (fv, Node (v, subtrees))
   in
-  insert_or_replace_inner (Some tree) 0
+  insert_or_replace_inner tree 0
 
 let insert str value tree =
   match insert_or_replace str value tree with
@@ -129,12 +116,3 @@ let rec size = function
         (fun acc tree -> acc + (tree |> snd |> size))
         (if Option.is_some v then 1 else 0)
         subtrees
-
-let nonredundancy_invar tree =
-  let rec nonredundancy_invar_inner root = function
-    | Node (None, []) -> root
-    | Node (Some _, []) -> true
-    | Node (_, subtrees) ->
-        List.for_all (snd >> nonredundancy_invar_inner false) subtrees
-  in
-  nonredundancy_invar_inner true tree

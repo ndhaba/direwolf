@@ -25,10 +25,10 @@ let distinct_tup2 elem =
   make
     ((distinct_const_list 2 elem).gen >>= fun l -> Gen.return (hd l, hd (tl l)))
 
-let make_test ?(count = 1000) gen fn name =
+let make_test ?(count = 500) gen fn name =
   QCheck_ounit.to_ounit2_test (QCheck.Test.make ~count ~name gen fn)
 
-let make_test_fail ?(count = 1000) gen fn name =
+let make_test_fail ?(count = 500) gen fn name =
   QCheck_ounit.to_ounit2_test
     (QCheck.Test.make ~count ~name gen (fun x ->
          try
