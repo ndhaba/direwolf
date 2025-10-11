@@ -1,6 +1,6 @@
 open OUnit2
 open Utils
-open Direwolf
+open Direwolf.Structs
 
 let test_key = make_test QCheck.string
 let test_key_fail f = make_test_fail QCheck.string f
