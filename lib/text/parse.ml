@@ -3,6 +3,7 @@ open Types
 type text_token =
   | Number of float
   | Word of string
+  | Gap
   | Plus
   | Minus
   | Asterisk
@@ -89,7 +90,10 @@ let rec lex_raw acc i str =
     | c when is_numeric c ->
         let token, rest = lex_number str i in
         lex_raw (token :: acc) rest str
-    | c when is_whitespace c -> lex_raw acc (i + 1) str
+    | c when is_whitespace c -> (
+        match acc with
+        | Gap :: _ -> lex_raw acc (i + 1) str
+        | _ -> lex_raw (Gap :: acc) (i + 1) str)
     | c -> failwith ("Invalid character: " ^ String.make 1 c)
 
 let lex_text text = lex_raw [] 0 text
@@ -105,10 +109,13 @@ let rec parse_value text : raw_expr * text_token list =
       | Underscore :: t -> failwith "Invalid subscript"
       | t -> (String (base, None), t))
   (* (expr) ... *)
-  | LParen :: t -> begin
+  | LParen :: Gap :: t | LParen :: t -> begin
       let rec chain acc l =
         match l with
-        | RParen :: t -> (List.rev acc, t)
+        | RParen :: t | Gap :: RParen :: t -> (List.rev acc, t)
+        | Gap :: Comma :: Gap :: t
+        | Gap :: Comma :: t
+        | Comma :: Gap :: t
         | Comma :: t ->
             let next, t = parse_add_sub t in
             chain (next :: acc) t
@@ -135,22 +142,27 @@ and parse_factorial text =
   let left, text = parse_value text in
   chain text left
 
-and parse_pow text : raw_expr * text_token list =
+and parse_pow text =
   let left, rest = parse_factorial text in
   match rest with
+  | Gap :: Caret :: Gap :: rest
+  | Gap :: Caret :: rest
+  | Caret :: Gap :: rest
   | Caret :: rest ->
       let right, rest = parse_pow rest in
-      (Power (left, right), rest)
+      let node : raw_expr = Power (left, right) in
+      (node, rest)
   | rest -> (left, rest)
 
-and parse_negate text : raw_expr * text_token list =
-  match text with
+and parse_negate tokens =
+  match tokens with
   | Minus :: rest ->
       let expr, rest = parse_negate rest in
-      (Negate expr, rest)
+      let node : raw_expr = Negate expr in
+      (node, rest)
   | text -> parse_pow text
 
-and parse_implicit_mult text =
+and parse_implicit_mult tokens =
   let rec chain acc = function
     | (Word _ :: t | LParen :: t | Number _ :: t) as tokens ->
         let right, rest = parse_negate tokens in
@@ -160,62 +172,65 @@ and parse_implicit_mult text =
         | [ node ] -> (node, tokens)
         | acc -> (ImplicitMult (List.rev acc), tokens))
   in
-  let left, rest = parse_negate text in
-  chain [ left ] rest
+  match tokens with
+  | Gap :: tokens | tokens ->
+      let left, rest = parse_negate tokens in
+      chain [ left ] rest
 
-and parse_mult_div text =
+and parse_mult_div tokens =
   let rec mult_chain acc = function
-    | Asterisk :: t ->
+    | Asterisk :: t | Gap :: Asterisk :: t ->
         let right, t = parse_implicit_mult t in
         mult_chain (right :: acc) t
-    | LSlash :: t as tokens ->
+    | (LSlash :: t | Gap :: LSlash :: t) as tokens ->
         let node = ExplicitMult (List.rev acc) in
         div_chain node tokens
     | tokens ->
         let node = ExplicitMult (List.rev acc) in
         (node, tokens)
   and div_chain left = function
-    | LSlash :: t ->
+    | LSlash :: t | Gap :: LSlash :: t ->
         let right, t = parse_implicit_mult t in
         let node : raw_expr = Divide (left, right) in
         div_chain node t
-    | Asterisk :: t as tokens -> mult_chain [ left ] tokens
+    | (Asterisk :: t | Gap :: Asterisk :: t) as tokens ->
+        mult_chain [ left ] tokens
     | tokens -> (left, tokens)
   in
-  let left, rest = parse_implicit_mult text in
+  let left, rest = parse_implicit_mult tokens in
   match rest with
-  | Asterisk :: _ -> mult_chain [ left ] rest
-  | LSlash :: _ -> div_chain left rest
+  | Asterisk :: _ | Gap :: Asterisk :: _ -> mult_chain [ left ] rest
+  | LSlash :: _ | Gap :: LSlash :: _ -> div_chain left rest
   | _ -> (left, rest)
 
 and parse_add_sub tokens =
   let rec add_chain acc = function
-    | Plus :: t ->
+    | Gap :: Plus :: t | Plus :: t ->
         let right, t = parse_mult_div t in
         add_chain (right :: acc) t
-    | Minus :: t as tokens ->
+    | (Minus :: t | Gap :: Minus :: t) as tokens ->
         let node : raw_expr = Add (List.rev acc) in
         subtract_chain node tokens
     | tokens ->
         let node : raw_expr = Add (List.rev acc) in
         (node, tokens)
   and subtract_chain left = function
-    | Minus :: t ->
+    | Gap :: Minus :: t | Minus :: t ->
         let right, t = parse_mult_div t in
         let node : raw_expr = Subtract (left, right) in
         subtract_chain node t
-    | Plus :: t as tokens -> add_chain [ left ] tokens
+    | (Plus :: t | Gap :: Plus :: t) as tokens -> add_chain [ left ] tokens
     | tokens -> (left, tokens)
   in
   let left, rest = parse_mult_div tokens in
   match rest with
-  | Plus :: _ -> add_chain [ left ] rest
-  | Minus :: _ -> subtract_chain left rest
+  | Plus :: _ | Gap :: Plus :: _ -> add_chain [ left ] rest
+  | Minus :: _ | Gap :: Minus :: _ -> subtract_chain left rest
   | _ -> (left, rest)
 
 let parse_text_tokens = parse_add_sub
 
 let parse_text text =
   match parse_text_tokens (lex_text text) with
-  | tree, [] -> tree
+  | tree, [] | tree, [ Gap ] -> tree
   | _, _ -> failwith "Expected EOF"
