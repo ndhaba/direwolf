@@ -64,7 +64,7 @@ let lex_string str i =
 (** [lex_raw i str] is a list of tokens representing [str] starting at [i] *)
 let rec lex_raw acc i str =
   let strlen = String.length str in
-  if i >= strlen then []
+  if i >= strlen then List.rev acc
   else
     match str.[i] with
     | '+' -> lex_raw (Plus :: acc) (i + 1) str
@@ -76,6 +76,7 @@ let rec lex_raw acc i str =
     | ')' -> lex_raw (RParen :: acc) (i + 1) str
     | ',' -> lex_raw (Comma :: acc) (i + 1) str
     | '!' -> lex_raw (Exclamation :: acc) (i + 1) str
+    | '_' -> lex_raw (Underscore :: acc) (i + 1) str
     | c when is_alphabetic c ->
         let token, rest = lex_string str i in
         lex_raw (token :: acc) rest str
@@ -151,7 +152,7 @@ and parse_negate text : raw_expr * text_token list =
 
 and parse_implicit_mult text =
   let rec chain acc = function
-    | (Word _ :: t | LParen :: t) as tokens ->
+    | (Word _ :: t | LParen :: t | Number _ :: t) as tokens ->
         let right, rest = parse_negate tokens in
         chain (right :: acc) rest
     | tokens -> (
